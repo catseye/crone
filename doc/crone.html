@@ -1,0 +1,236 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module crone</title>
+
+</head>
+<body bgcolor="white">
+<h1>Module crone</h1>
+<ul><li>
+<a href="#index">Function index</a></li><li>
+<a href="#exported">Exported functions</a></li><li>
+<a href="#types">Data Types</a></li><li>
+<a href="#internal">Documented Internal Functions</a></li></ul>
+
+<h2>Description</h2>
+Simple task scheduler for Erlang/OTP.  This application aims to
+  one day be a viable replacement for <code>cron</code>.
+ 
+  <p><code>crone</code> is a simple utility which schedules tasks to be
+  run periodically at given times.</p>
+ 
+  <p><code>crone</code> differs from <code>cron</code> in the following
+  ways:</p>
+ 
+  <ul>
+  <li><code>crone</code> does not support multiple users.
+  Of course, individual users may run their own copies of <code>crone</code>
+  as desired.</li>
+ 
+  <li>No configuration files are used.  <code>crone</code> is simply
+  started with a list of task descriptions.  These could easily be stored
+  in a file to be read with <code>file:consult/1</code> if desired.</li>
+ 
+  <li><code>crone</code> launches, not system executables, but Erlang
+  functions.  Of course, system programs can be launched with the Erlang
+  function <code>os:cmd/1</code>.</li>
+ 
+  <li>The synax of a task description is quite different from
+  <code>crontab</code>.  It is (in this author's opinion) easier to read
+  and is much more in keeping with the Erlang tradition.  It is not
+  quite as expressive as <code>cron</code> but this can be compensated
+  for by adding multiple tasks.</li>
+ 
+  <li>No output is logged or mailed to anyone.  If you want output to
+  be logged or mailed, you must explicitly specify that as part of the
+  task.</li>
+ 
+  <li><code>crone</code> does not poll the system on a minute-by-minute
+  basis like <code>cron</code> does.  Each task is assigned to a single
+  (Erlang) process.  The time until it is to run next is calculated,
+  and the process sleeps for exactly that long.</li>
+ 
+  <li>Unlike <code>cron</code>'s one-minute resolution, <code>crone</code>
+  has a 2-second resolution (actually 1 second, but after running the
+  task, the process waits an extra second to avoid accidentally running it
+  more than once.)</li>
+ 
+  <li>Because it does not wake up every minute, and because it does not
+  have a fixed configuration file, <code>crone</code> must be stopped and
+  restarted if the user wishes to change the scheduled tasks.</li>
+ 
+  <li><code>crone</code> does not handle Daylight Savings Time (or other
+  cases when the system clock is altered) gracefully, and it is recommended
+  that it be stopped and restarted on such occasions.</li>
+  </ul>
+ 
+
+<h2><a name="index">Function Index</a></h2>
+
+<table width="100%" border="1"><tr><th colspan="2" align="left">Exported Functions</th></tr>
+<tr><td><a href="#format_time-1">format_time/1</a></td><td>Returns human-readable string from seconds past midnight.</td></tr>
+<tr><td><a href="#loop_task-1">loop_task/1</a></td><td>Used by <code>start/1</code> to wait until the next time
+  each task is scheduled to run, run it, and repeat.</td></tr>
+<tr><td><a href="#start-1">start/1</a></td><td>Starts <code>crone</code>, spawning a process for each task.</td></tr>
+<tr><td><a href="#stop-1">stop/1</a></td><td>Stops all monitoring processes started by <code>crone</code>.</td></tr>
+<tr><th colspan="2" align="left">Internal Documented Functions</th></tr>
+<tr><td><a href="#current_time-0">current_time/0</a></td><td>Returns the current time, in seconds past midnight.</td></tr>
+<tr><td><a href="#first_time-1">first_time/1</a></td><td>Calculates the first time in a given period.</td></tr>
+<tr><td><a href="#last_time-1">last_time/1</a></td><td>Calculates the last time in a given period.</td></tr>
+<tr><td><a href="#next_time-2">next_time/2</a></td><td>Calculates the first time in the given period after the given time.</td></tr>
+<tr><td><a href="#resolve_dow-1">resolve_dow/1</a></td><td>Returns the number of the given day of the week.</td></tr>
+<tr><td><a href="#resolve_dur-1">resolve_dur/1</a></td><td>Returns seconds for a given duration.</td></tr>
+<tr><td><a href="#resolve_period-1">resolve_period/1</a></td><td>Returns a list of times given a periodic specification.</td></tr>
+<tr><td><a href="#resolve_time-1">resolve_time/1</a></td><td>Returns seconds past midnight for a given time.</td></tr>
+<tr><td><a href="#run_task-1">run_task/1</a></td><td>Spawns a process to accomplish the given task.</td></tr>
+<tr><td><a href="#until_days_from_now-2">until_days_from_now/2</a></td><td>Calculates the duration in seconds until the given period
+  occurs several days from now.</td></tr>
+<tr><td><a href="#until_next_daytime-1">until_next_daytime/1</a></td><td>Calculates the duration in seconds until the next time this
+  period is to occur during the day.</td></tr>
+<tr><td><a href="#until_next_daytime_or_days_from_now-2">until_next_daytime_or_days_from_now/2</a></td><td>Calculates the duration in seconds until the given period
+  occurs, which may be today or several days from now.</td></tr>
+<tr><td><a href="#until_next_time-1">until_next_time/1</a></td><td>Calculates the duration in seconds until the next time
+  a task is to be run.</td></tr>
+<tr><td><a href="#until_tomorrow-1">until_tomorrow/1</a></td><td>Calculates the duration in seconds until the given time occurs
+  tomorrow.</td></tr>
+</table>
+
+<h2><a name="types">Data Types</a></h2>
+
+<h3><a name="type-task">task()</a> = {<a href="#type-when">when()</a>, <a href="#type-mfa">mfa()</a>}</h3>
+
+
+
+<h3><a name="type-mfa">mfa()</a> = {<a href="#type-module">module()</a>, function(), <a href="#type-args">args()</a>}</h3>
+
+
+
+<h3><a name="type-when">when()</a> = {daily, <a href="#type-period">period()</a>} | {weekly, <a href="#type-dow">dow()</a>, <a href="#type-period">period()</a>} | {monthly, <a href="#type-dom">dom()</a>, <a href="#type-period">period()</a>}</h3>
+
+
+
+<h3><a name="type-dow">dow()</a> = mon | tue | wed | thu | fri | sat | sun</h3>
+
+
+
+<h3><a name="type-dom">dom()</a> = integer()</h3>
+
+
+
+<h3><a name="type-period">period()</a> = <a href="#type-time">time()</a> | [<a href="#type-time">time()</a>] | {every, <a href="#type-duration">duration()</a>, <a href="#type-constraint">constraint()</a>}</h3>
+
+
+
+<h3><a name="type-duration">duration()</a> = {integer(), hr | min | sec}</h3>
+
+
+
+<h3><a name="type-constraint">constraint()</a> = {between, <a href="#type-time">time()</a>, <a href="#type-time">time()</a>}</h3>
+
+
+
+<h3><a name="type-time">time()</a> = {integer(), am | pm} | {integer(), integer(), am | pm}</h3>
+
+
+
+<h2><a name="exported">Exported Functions</a></h2>
+
+<h3><a name="format_time-1">format_time/1</a></h3>
+
+<p><code>format_time(integer()) -> string()</code></p>
+<p>Returns human-readable string from seconds past midnight.</p>
+
+<h3><a name="loop_task-1">loop_task/1</a></h3>
+
+<p><code>loop_task(<a href="#type-task">task()</a>) -> never_returns</code></p>
+<p>Used by <code>start/1</code> to wait until the next time
+  each task is scheduled to run, run it, and repeat.</p>
+
+<h3><a name="start-1">start/1</a></h3>
+
+<p><code>start([<a href="#type-task">task()</a>]) -> [pid()]</code></p>
+<p>Starts <code>crone</code>, spawning a process for each task.</p>
+
+<h3><a name="stop-1">stop/1</a></h3>
+
+<p><code>stop([<a href="#type-task">task()</a>]) -> ok</code></p>
+<p>Stops all monitoring processes started by <code>crone</code>.</p>
+
+<h2><a name="internal">Documented Internal Functions</a></h2>
+
+<h3><a name="current_time-0">current_time/0</a></h3>
+
+<p><code>current_time() -> <a href="#type-seconds">seconds()</a><ul><li><a name="type-seconds">seconds()</a> = integer()</li></ul></code></p>
+<p>Returns the current time, in seconds past midnight.</p>
+
+<h3><a name="first_time-1">first_time/1</a></h3>
+
+<p><code>first_time(<a href="#type-period">period()</a>) -> <a href="#type-seconds">seconds()</a></code></p>
+<p>Calculates the first time in a given period.</p>
+
+<h3><a name="last_time-1">last_time/1</a></h3>
+
+<p><code>last_time(<a href="#type-period">period()</a>) -> <a href="#type-seconds">seconds()</a></code></p>
+<p>Calculates the last time in a given period.</p>
+
+<h3><a name="next_time-2">next_time/2</a></h3>
+
+<p><code>next_time(<a href="#type-period">period()</a>, <a href="#type-seconds">seconds()</a>) -> <a href="#type-seconds">seconds()</a></code></p>
+<p>Calculates the first time in the given period after the given time.</p>
+
+<h3><a name="resolve_dow-1">resolve_dow/1</a></h3>
+
+<p><code>resolve_dow(<a href="#type-dow">dow()</a>) -> integer()</code></p>
+<p>Returns the number of the given day of the week. See the calendar
+  module for day numbers.</p>
+
+<h3><a name="resolve_dur-1">resolve_dur/1</a></h3>
+
+<p><code>resolve_dur(<a href="#type-duration">duration()</a>) -> <a href="#type-seconds">seconds()</a></code></p>
+<p>Returns seconds for a given duration.</p>
+
+<h3><a name="resolve_period-1">resolve_period/1</a></h3>
+
+<p><code>resolve_period(<a href="#type-period">period()</a>) -> [<a href="#type-seconds">seconds()</a>]</code></p>
+<p>Returns a list of times given a periodic specification.</p>
+
+<h3><a name="resolve_time-1">resolve_time/1</a></h3>
+
+<p><code>resolve_time(<a href="#type-time">time()</a>) -> <a href="#type-seconds">seconds()</a></code></p>
+<p>Returns seconds past midnight for a given time.</p>
+
+<h3><a name="run_task-1">run_task/1</a></h3>
+
+<p><code>run_task(<a href="#type-task">task()</a>) -> pid()</code></p>
+<p>Spawns a process to accomplish the given task.</p>
+
+<h3><a name="until_days_from_now-2">until_days_from_now/2</a></h3>
+
+<p><code>until_days_from_now(<a href="#type-period">period()</a>, integer()) -> <a href="#type-seconds">seconds()</a></code></p>
+<p>Calculates the duration in seconds until the given period
+  occurs several days from now.</p>
+
+<h3><a name="until_next_daytime-1">until_next_daytime/1</a></h3>
+
+<p><code>until_next_daytime(<a href="#type-period">period()</a>) -> <a href="#type-seconds">seconds()</a></code></p>
+<p>Calculates the duration in seconds until the next time this
+  period is to occur during the day.</p>
+
+<h3><a name="until_next_daytime_or_days_from_now-2">until_next_daytime_or_days_from_now/2</a></h3>
+
+<p><code>until_next_daytime_or_days_from_now(<a href="#type-period">period()</a>, integer()) -> <a href="#type-seconds">seconds()</a></code></p>
+<p>Calculates the duration in seconds until the given period
+  occurs, which may be today or several days from now.</p>
+
+<h3><a name="until_next_time-1">until_next_time/1</a></h3>
+
+<p><code>until_next_time(<a href="#type-task">task()</a>) -> <a href="#type-seconds">seconds()</a></code></p>
+<p>Calculates the duration in seconds until the next time
+  a task is to be run.</p>
+
+<h3><a name="until_tomorrow-1">until_tomorrow/1</a></h3>
+
+<p><code>until_tomorrow(<a href="#type-seconds">seconds()</a>) -> <a href="#type-seconds">seconds()</a></code></p>
+<p>Calculates the duration in seconds until the given time occurs
+  tomorrow.</p></body>
+</html>
